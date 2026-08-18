@@ -8,7 +8,11 @@ class Match:
         self.grid = Grid(7, 6)  # standard Connect Four grid size
 
         self.coins = {self.player1 : "R", self.player2 : "B"}
+        self.IsOver = False
+        self.winner = "No one won yet"
+        self.turn = 0
     def play(self):
+        self.turn += 1
         current_player = self.player1
         while True:
             print(f"{current_player}'s turn")
@@ -16,13 +20,37 @@ class Match:
             column = int(input(f"Choose a column ({availble_columns}): "))
             try:
                 self.grid.insert_coin(column, self.coins[current_player])
+                print("Current boardstate:")
                 self.grid.display()
                 if self.check_winner(current_player):
                     print(f"{current_player} wins!")
+                    self.IsOver = True
+                    self.winner = current_player
                     break
                 current_player = self.player2 if current_player == self.player1 else self.player1
             except IndexError as e:
                 print(e)
+    # method to get availible columns for the bot to choose from
+    def get_available_columns(self):
+        return self.grid.get_nonempty_columns()
+    # play loop for bots
+    def play_bot(self, choice):  # non user input type of playing
+        self.turn += 1
+        if self.turn % 2 == 1:
+            current_player = self.player1
+        else:
+            current_player = self.player2
+        print(f"{current_player}'s turn")
+        
+        try:
+            self.grid.insert_coin(choice, self.coins[current_player])
+            if self.check_winner(current_player):
+                print(f"{current_player} wins!")
+                self.winner = current_player
+                self.IsOver = True
+            current_player = self.player2 if current_player == self.player1 else self.player1
+        except IndexError as e:
+            print(e)
 
     def check_winner(self, player):
         # Check for a winning condition (4 in a row)
@@ -36,6 +64,7 @@ class Match:
                     counter += 1
                     if counter >= 4:
                         print(f"Found a winning condition for {val} at row {row}, col {col}")
+                        self.IsOver = True
                         return True
                 elif val != last_val and val !=0:
                     counter = 1
@@ -54,6 +83,7 @@ class Match:
                     counter_v += 1
                     if counter_v >= 4:
                         print(f"Found a winning condition for {val_v} at row {col}, col {row}")
+                        self.IsOver = True
                         return True
                 elif val_v != last_val_v and val_v !=0:
                     counter_v = 1
@@ -78,6 +108,7 @@ class Match:
                                 break
                     if counter_d >= 4:
                         print(f"Found a winning condition for {val_d} at row {row}, col {col} (diagonal down-right)")
+                        self.IsOver = True
                         return True
 
                     # check diagonal up-right
@@ -94,9 +125,13 @@ class Match:
         # check for draw due to full grid
         if self.grid.get_nonempty_columns() == []:
             print("The game is a draw!")
+            self.IsOver = True
             return True
         return False 
 
 
 match = Match("Player 1", "Player 2")
-match.play()
+
+#match.grid.display()
+
+#match.play()

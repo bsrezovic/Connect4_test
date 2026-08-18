@@ -17,7 +17,8 @@ class Grid:
             if any(self.grid[row][col] == 0 for row in range(self.height)):
                 nonempty_columns.append(col)
         return nonempty_columns
-
+    def get_grid(self):
+        return [row[:] for row in self.grid]  # Return a copy of the grid
     def display(self):
         for row in self.grid:
             print(' '.join(str(cell) for cell in row))
@@ -40,6 +41,8 @@ c4grid = Grid(7, 6)
 c4grid.insert_coin(3, "B")
 
 print(c4grid.display())
+
+c4grid.get_grid()
 
 print(c4grid.get_nonempty_columns()) 
 
