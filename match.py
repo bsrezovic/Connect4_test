@@ -10,12 +10,12 @@ class Match:
         self.coins = {self.player1 : "R", self.player2 : "B"}
         self.IsOver = False
         self.winner = "No one won yet"
-        self.turn = 0
+        self.turn = 1
     def play(self):
         self.turn += 1
         current_player = self.player1
         while True:
-            print(f"{current_player}'s turn")
+            #print(f"{current_player}'s turn")
             availble_columns = self.grid.get_nonempty_columns()
             column = int(input(f"Choose a column ({availble_columns}): "))
             try:
@@ -35,13 +35,13 @@ class Match:
         return self.grid.get_nonempty_columns()
     # play loop for bots
     def play_bot(self, choice):  # non user input type of playing
-        self.turn += 1
+        
         if self.turn % 2 == 1:
             current_player = self.player1
         else:
             current_player = self.player2
-        print(f"{current_player}'s turn")
-        
+        #print(f"{current_player}'s turn")
+        self.turn += 1
         try:
             self.grid.insert_coin(choice, self.coins[current_player])
             if self.check_winner(current_player):
