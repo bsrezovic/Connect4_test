@@ -15,7 +15,7 @@ class Match:
         self.turn += 1
         current_player = self.player1
         while True:
-            #print(f"{current_player}'s turn")
+            print(f"{current_player}'s turn")
             availble_columns = self.grid.get_nonempty_columns()
             column = int(input(f"Choose a column ({availble_columns}): "))
             try:
@@ -45,7 +45,7 @@ class Match:
         try:
             self.grid.insert_coin(choice, self.coins[current_player])
             if self.check_winner(current_player):
-                print(f"{current_player} wins!")
+                #print(f"{current_player} wins!")
                 self.winner = current_player
                 self.IsOver = True
             current_player = self.player2 if current_player == self.player1 else self.player1
@@ -63,7 +63,7 @@ class Match:
                 if val == last_val and val != 0:
                     counter += 1
                     if counter >= 4:
-                        print(f"Found a winning condition for {val} at row {row}, col {col}")
+                        #print(f"Found a winning condition for {val} at row {row}, col {col}")
                         self.IsOver = True
                         return True
                 elif val != last_val and val !=0:
@@ -82,7 +82,7 @@ class Match:
                 if val_v == last_val_v and val_v != 0:
                     counter_v += 1
                     if counter_v >= 4:
-                        print(f"Found a winning condition for {val_v} at row {col}, col {row}")
+                        #print(f"Found a winning condition for {val_v} at row {col}, col {row}")
                         self.IsOver = True
                         return True
                 elif val_v != last_val_v and val_v !=0:
@@ -107,7 +107,7 @@ class Match:
                             else:
                                 break
                     if counter_d >= 4:
-                        print(f"Found a winning condition for {val_d} at row {row}, col {col} (diagonal down-right)")
+                        #print(f"Found a winning condition for {val_d} at row {row}, col {col} (diagonal down-right)")
                         self.IsOver = True
                         return True
 
@@ -120,11 +120,11 @@ class Match:
                             else:
                                 break
                     if counter_u >= 4:
-                        print(f"Found a winning condition for {val_d} at row {row}, col {col} (diagonal up-right)")
+                        #print(f"Found a winning condition for {val_d} at row {row}, col {col} (diagonal up-right)")
                         return True
         # check for draw due to full grid
         if self.grid.get_nonempty_columns() == []:
-            print("The game is a draw!")
+            #print("The game is a draw!")
             self.IsOver = True
             return True
         return False 

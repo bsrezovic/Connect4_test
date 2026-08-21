@@ -1,6 +1,10 @@
 
 import random
 from collections import defaultdict
+# switching to deep q learning
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
 class Agent:
     def __init__(self, alpha=0.1, gamma=0.9, epsilon=0.1):
@@ -36,3 +40,18 @@ class Agent:
         new_value = old_value + self.alpha * (reward + self.gamma * max_q_next - old_value)
         self.q_table[(state, action)] = new_value
 
+
+
+# simple newrual network adapted
+class DQN(nn.Module):
+    def __init__(self,input_dim, output_dim):
+        super(DQN, self).__init__()
+        self.fc1 = nn.Linear(input_dim, 128)
+        self.fc2 = nn.Linear(128, 128)
+        self.fc3 = nn.Linear(128, output_dim)
+    
+    def forward(self, x):
+        x = x.view(x.size(0), -1)   # flatten: (batch, 42)
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        return self.fc3(x)
