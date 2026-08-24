@@ -141,7 +141,7 @@ while not done:
         match.play_bot(move)
     else:
 
-        state = torch.FloatTensor(match.grid.get_grid()) .flatten()#tensor, and 
+        state = torch.FloatTensor(match.grid.get_grid()).flatten()#tensor, and 
         #adds a dim in front for batch size/pruposes
         q_values = policy_net(state.unsqueeze(0)) # only add the dim here cuz you messed up the optimizer func
         # if the move is unavailible due to full columns it needs to be removed
