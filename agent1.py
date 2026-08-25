@@ -83,11 +83,14 @@ class DeepAgent:
         # training utilities
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=learning_rate)
         self.memory = deque(maxlen=self.memory_size)
-    
+        self.winrate = 0
+        self.games_played = 0 
+        self.games_won = 0
+        self.total_reward = 0
     # this just plays moves based on the net, good code i hope for future playing vs human use
-    def choose_action(self, state, actions, availible_actions): 
+    def choose_action(self, state, availible_actions): 
         if random.random() < self.epsilon:
-            return random.choice(actions)
+            return random.choice(availible_actions)
         else:  # state should be input as match.grid.get_grid()
             state = torch.FloatTensor(state).flatten()
             q_values = self.policy_net(state.unsqueeze(0)) # only add the dim here cuz you messed up the optimizer func
@@ -97,17 +100,44 @@ class DeepAgent:
             masked_q = q_values + mask
              # select from the possible ones
             move = torch.argmax(masked_q).item() 
+            # depracated below because torch.argmax returns only first max value
             #best_actions = [a for a, q in zip(actions, q_values) if q == max_q]  # random tiebreaker
-            return random.choice(move)
+            #return random.choice(move)
+            return move
     # separated the memory update so its more readable in the training loop
     def update_memory(self,last_state,next_state,move,done,reward):
         self.memory.append((last_state.squeeze(0), move, reward, next_state.squeeze(0), done))
-    
+        self.total_reward += reward
     # updating the function based on reward
     # this places the reward breakpoint outside the agent code and into the training loop
     # also good practice i hope?
-    def update(self, state, action, reward, next_state, next_actions):
-        max_q_next = max([self.get_q(next_state, a) for a in next_actions], default=0)
-        old_value = self.q_table[(state, action)]
-        new_value = old_value + self.alpha * (reward + self.gamma * max_q_next - old_value)
-        self.q_table[(state, action)] = new_value
+    def optimize(self):
+        if len(self.memory) < self.batch_size:
+       # print("memory smaller than batch size")
+        # wait unitl replay memory fills to batch size, we only optimize model when it goes through a batch
+            return
+        # break correlation between sequential
+        batch = random.sample(self.memory, self.batch_size)
+        # unzip into 5 separate tuples
+        state_batch, action_batch, reward_batch, next_state_batch, done_batch = zip(*batch)
+
+        state_batch = torch.stack(state_batch).squeeze(1)
+        # this is somehow numpys fault that this extra dim gets added
+        action_batch = torch.LongTensor(action_batch).unsqueeze(1)
+        reward_batch = torch.FloatTensor(reward_batch)
+        next_state_batch = torch.stack(next_state_batch).squeeze(1)
+        done_batch = torch.FloatTensor(done_batch)
+
+        # Compute Q-values for current states
+        q_values = self.policy_net(state_batch).gather(1, action_batch).squeeze()
+
+        # Compute target Q-values using the target network
+        with torch.no_grad():
+            max_next_q_values = self.target_net(next_state_batch).max(1)[0]
+            target_q_values = reward_batch + self.gamma * max_next_q_values * (1 - done_batch)
+
+        loss = nn.MSELoss()(q_values, target_q_values)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
