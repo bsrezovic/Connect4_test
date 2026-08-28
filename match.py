@@ -1,6 +1,9 @@
 from grid import Grid  # get the grid class from the grid.py file
-
-
+from match_gui import MatchViewer
+import threading
+import random
+import time
+import pickle
 class Match:
     def __init__(self, player1, player2):
         self.player1 = player1
@@ -11,6 +14,56 @@ class Match:
         self.IsOver = False
         self.winner = "No one won yet"
         self.turn = 1
+    def play_vs_bot(self,agent):
+        # first decide and announce who goes first 
+        if self.turn == 1: # if its the first turn we have to dedide is the random bot player 1 or player 2, and then we will have to make the agent play the other player
+            if random.random() < 0.5:
+                #botorder = 0
+                print("You will go first!")
+                human_player = self.player1
+                bot_player = self.player2
+            else:
+                print("The agent will go first")
+                #botorder = 1
+                human_player = self.player2
+                bot_player = self.player1
+        
+        current_player = self.player1
+        while True:
+            availble_columns = self.grid.get_nonempty_columns()
+            print(f"Its now turn {self.turn}")
+            print(f"{current_player}'s turn")
+            if current_player == human_player:
+                # human player input loop
+                column = int(input(f"Choose a column ({availble_columns}): "))
+                try:
+                    self.grid.insert_coin(column, self.coins[current_player])
+                    print("Current boardstate:")
+                    self.grid.display()
+                    if self.check_winner(current_player):
+                        print(f"{current_player} wins!")
+                        self.IsOver = True
+                        self.winner = current_player
+                        break
+                    current_player = self.player2 if current_player == self.player1 else self.player1
+                    self.turn +=1
+                except IndexError as e:
+                    print(e)
+            else:
+                # agent playet input loop
+                state = self.grid.get_grid()
+                chosen_move = agent.choose_action(state,availble_columns)
+                self.grid.insert_coin(chosen_move, self.coins[current_player])
+                print("Current boardstate:")
+                self.grid.display()
+                if self.check_winner(current_player):
+                    print(f"{current_player} wins!")
+                    self.IsOver = True
+                    self.winner = current_player
+                    break
+                current_player = self.player2 if current_player == self.player1 else self.player1
+                self.turn +=1
+
     def play(self):
         self.turn += 1
         current_player = self.player1
@@ -129,9 +182,15 @@ class Match:
             return True
         return False 
 
+with open("agent_v1.pkl", "rb") as file:
+    loaded_agent = pickle.load(file)
 
-match = Match("Player 1", "Player 2")
+if __name__ == "__main__":
+    game = Match("Player 1", "Player 2")
+    viewer = MatchViewer(game)
 
-#match.grid.display()
+    # Run the original play() in a thread
+    game_thread = threading.Thread(target=game.play_vs_bot,args =(loaded_agent,), daemon=True)
+    game_thread.start()
 
-#match.play()
+    viewer.start()

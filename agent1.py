@@ -141,3 +141,35 @@ class DeepAgent:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+
+
+# 2. Helper functions to convert network weights to/from a flat genome vector
+def model_to_vector(model):
+    """Flattens all model weights and biases into a single 1D numpy array."""
+    return np.concatenate([p.data.cpu().numpy().flatten() for p in model.parameters()])
+
+def vector_to_model(vector, model):
+    """Restores a flat array of weights back into the PyTorch model structure."""
+    pointer = 0
+    for p in model.parameters():
+        num_param = p.numel()
+        p.data = torch.from_numpy(vector[pointer:pointer + num_param]).view(p.size()).float()
+        pointer += num_param
+    return model
+
+# 3. Evolutionary Operators
+def crossover(parent1, parent2):
+    """Performs single-point crossover between two parent genomes."""
+    point = np.random.randint(1, len(parent1) - 1)
+    child1 = np.concatenate([parent1[:point], parent2[point:]])
+    child2 = np.concatenate([parent2[:point], parent1[point:]])
+    return child1, child2
+
+def mutate(genome, mutation_rate=0.1, scale=0.2):
+    """Applies random Gaussian mutations to individual genes."""
+    mask = np.random.rand(*genome.shape) < mutation_rate
+    noise = np.random.normal(0, scale, size=genome.shape)
+    genome[mask] += noise[mask]
+    return genome
+
