@@ -35,9 +35,9 @@ class Match:
             print(f"{current_player}'s turn")
             if current_player == human_player:
                 # human player input loop
-                column = int(input(f"Choose a column ({availble_columns}): "))
+                column = int(input(f"Choose a column ({[x +1 for x in availble_columns]}): "))
                 try:
-                    self.grid.insert_coin(column, self.coins[current_player])
+                    self.grid.insert_coin(column - 1, self.coins[current_player])
                     print("Current boardstate:")
                     self.grid.display()
                     if self.check_winner(current_player):
@@ -52,7 +52,7 @@ class Match:
             else:
                 # agent playet input loop
                 state = self.grid.get_grid()
-                chosen_move = agent.choose_action(state,availble_columns)
+                chosen_move = agent.choose_action(state,availble_columns,mode = "playing")
                 self.grid.insert_coin(chosen_move, self.coins[current_player])
                 print("Current boardstate:")
                 self.grid.display()
@@ -182,7 +182,7 @@ class Match:
             return True
         return False 
 
-with open("agent_v1.pkl", "rb") as file:
+with open("agent_v3.3.pkl", "rb") as file:
     loaded_agent = pickle.load(file)
 
 if __name__ == "__main__":

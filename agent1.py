@@ -87,9 +87,15 @@ class DeepAgent:
         self.games_played = 0 
         self.games_won = 0
         self.total_reward = 0
+        self.games_went_first = 0
+        self.games_went_second = 0
+        self.games_won_first = 0
+        self.games_won_second = 0
+        self.winrate_first = 0
+        self.winrate_second = 0
     # this just plays moves based on the net, good code i hope for future playing vs human use
-    def choose_action(self, state, availible_actions): 
-        if random.random() < self.epsilon:
+    def choose_action(self, state, availible_actions, mode = "learning"): 
+        if random.random() < self.epsilon and mode =="learning":
             return random.choice(availible_actions)
         else:  # state should be input as match.grid.get_grid()
             state = torch.FloatTensor(state).flatten()
