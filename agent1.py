@@ -4,9 +4,23 @@ from collections import defaultdict
 # switching to deep q learning
 import torch
 import torch.nn as nn
+import string
 import torch.optim as optim
 import numpy as np
 from collections import deque
+
+class dummy_agent: # just picks a column and stick with it until it cant anymore, then picks a new column
+    def __init__(self):
+        self.current_column = None
+        self.games_played = 0
+        self.games_won = 0
+        self.winrate = 0
+        self.type = "dummy"
+    def choose_action(self,availible_columns):
+        if self.current_column is None or self.current_column not in availible_columns:
+            self.current_column = random.choice(availible_columns)
+        return self.current_column
+
 
 class Agent:
     def __init__(self, alpha=0.1, gamma=0.9, epsilon=0.1):
@@ -58,11 +72,35 @@ class DQN(nn.Module):
         x = torch.relu(self.fc2(x))
         return self.fc3(x)
 
+# a deeper Neural net taking advantage of convolutional layers and kernel size
+
+class DQN2(nn.Module):
+    def __init__(self):
+        super(DQN2, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels=2, out_channels=32, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1)
+        
+        self.fc1 = nn.Linear(64 * 6 * 7, 128)
+        self.out = nn.Linear(128, 7)
+    
+    def forward(self, x):
+        # x shape: (batch_size, 2, 6, 7)
+        x = torch.relu(self.conv1(x))
+        x = torch.relu(self.conv2(x))
+        x = torch.relu(self.conv3(x))
+        
+        x = x.view(x.size(0), -1) # Flatten to 1D vector per batch element
+        x = torch.relu(self.fc1(x))
+        return self.out(x)
+
 
 class DeepAgent:
     def __init__(self, learning_rate = 0.001, gamma=0.99,
                  epsilon=1.0, epsilon_min = 0.01, epsilon_decay = 0.995,
                  batch_size = 64, target_update_freq = 1000, memory_size = 10000):
+        self.randID = id = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        # hyperparamters
         self.learning_rate = learning_rate
         self.gamma = gamma
         self.epsilon = epsilon
@@ -71,6 +109,7 @@ class DeepAgent:
         self.batch_size = batch_size
         self.target_update_freq = target_update_freq
         self.memory_size = memory_size
+        self.type = "DeepAgent"
         #episodes = 1000
         # initialize the target and the working network as well
         self.input_dim = 42
@@ -150,6 +189,95 @@ class DeepAgent:
 
 
 
+class DeepAgentConvolved(DeepAgent):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.policy_net = DQN2()
+        self.target_net = DQN2()
+        self.target_net.load_state_dict(self.policy_net.state_dict())
+        self.target_net.eval()
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate)
+        self.type = "DeepAgentConvolved"
+    # ok the and now we have to reimplement atleast choose move due to different input!
+    # and the optimizer as well
+    def modify_state(self,state,player_token):  # state input as match.grid.get_grid()
+        player_channel = np.zeros((6, 7), dtype=np.float32)
+        opponent_channel = np.zeros((6, 7), dtype=np.float32)
+
+        player_channel[state == player_token] = 1.0
+        opponent_channel[(state != player_token) & (state != 0)] = 1.0
+
+        stacked_board = np.stack([player_channel, opponent_channel], axis=0)
+            # Add batch dimension and convert to PyTorch Tensor -> shape (1, 2, 6, 7)
+        state = torch.tensor(stacked_board)
+        return(state)
+    def choose_action(self, state, availible_actions,player_token,mode = "learning"): 
+        if random.random() < self.epsilon and mode =="learning":
+            return random.choice(availible_actions)
+        else:  # state should be input as match.grid.get_grid()
+            # make two channel masks for the two input channels
+            state = self.modify_state(state,player_token).unsqueeze(0) 
+            #state = torch.FloatTensor(state).flatten()
+            q_values = self.policy_net(state) # only add the dim here cuz you messed up the optimizer func
+            # if the move is unavailible due to full columns it needs to be removed
+            mask = torch.full_like(q_values, -float('inf'))  # Shape: [1, 4]
+            mask[:, availible_actions] = 0.0  # Important: index the 2nd dimension
+            masked_q = q_values + mask
+             # select from the possible ones
+            move = torch.argmax(masked_q).item() 
+            # depracated below because torch.argmax returns only first max value
+            #best_actions = [a for a, q in zip(actions, q_values) if q == max_q]  # random tiebreaker
+            #return random.choice(move)
+            return move
+    def update_memory(self,last_state,next_state,move,done,reward,player_token):
+        last_state = self.modify_state(last_state, player_token)
+        next_state = self.modify_state(next_state, player_token)
+
+        self.memory.append((last_state, move, reward, next_state, done))
+        self.total_reward += reward
+    # updating the function based on reward
+    # this places the reward breakpoint outside the agent code and into the training loop
+    # also good practice i hope?
+    def optimize(self):
+        if len(self.memory) < self.batch_size:
+       # print("memory smaller than batch size")
+        # wait unitl replay memory fills to batch size, we only optimize model when it goes through a batch
+            return
+        # break correlation between sequential
+        batch = random.sample(self.memory, self.batch_size)
+        # unzip into 5 separate tuples
+        state_batch, action_batch, reward_batch, next_state_batch, done_batch = zip(*batch)
+
+        state_batch = torch.stack([
+            torch.as_tensor(s, dtype=torch.float32) for s in state_batch
+         ])
+        next_state_batch = torch.stack([
+            torch.as_tensor(s, dtype=torch.float32) for s in next_state_batch
+         ])
+        ##state_batch = torch.stack(state_batch).squeeze(1)
+        # this is somehow numpys fault that this extra dim gets added
+        action_batch = torch.LongTensor(action_batch).unsqueeze(1)
+        reward_batch = torch.FloatTensor(reward_batch)
+        #next_state_batch = torch.stack(next_state_batch).squeeze(1)
+        done_batch = torch.FloatTensor(done_batch)
+
+        # Compute Q-values for current states
+        q_values = self.policy_net(state_batch).gather(1, action_batch).squeeze()
+
+        # Compute target Q-values using the target network
+        with torch.no_grad():
+            max_next_q_values = self.target_net(next_state_batch).max(1)[0]
+            target_q_values = reward_batch + self.gamma * max_next_q_values * (1 - done_batch)
+
+        loss = nn.MSELoss()(q_values, target_q_values)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+
+
+
 # 2. Helper functions to convert network weights to/from a flat genome vector
 def model_to_vector(model):
     """Flattens all model weights and biases into a single 1D numpy array."""
@@ -178,4 +306,3 @@ def mutate(genome, mutation_rate=0.1, scale=0.2):
     noise = np.random.normal(0, scale, size=genome.shape)
     genome[mask] += noise[mask]
     return genome
-

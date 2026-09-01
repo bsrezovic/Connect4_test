@@ -18,13 +18,15 @@ class Match:
         # first decide and announce who goes first 
         if self.turn == 1: # if its the first turn we have to dedide is the random bot player 1 or player 2, and then we will have to make the agent play the other player
             if random.random() < 0.5:
-                #botorder = 0
+                botorder = 2
                 print("You will go first!")
                 human_player = self.player1
                 bot_player = self.player2
+                
             else:
                 print("The agent will go first")
-                #botorder = 1
+                botorder = 1
+            
                 human_player = self.player2
                 bot_player = self.player1
         
@@ -52,7 +54,7 @@ class Match:
             else:
                 # agent playet input loop
                 state = self.grid.get_grid()
-                chosen_move = agent.choose_action(state,availble_columns,mode = "playing")
+                chosen_move = agent.choose_action(state,availble_columns,player_token = botorder,mode = "playing")
                 self.grid.insert_coin(chosen_move, self.coins[current_player])
                 print("Current boardstate:")
                 self.grid.display()
@@ -99,6 +101,7 @@ class Match:
             self.grid.insert_coin(choice, self.coins[current_player])
             if self.check_winner(current_player):
                 #print(f"{current_player} wins!")
+
                 self.winner = current_player
                 self.IsOver = True
             current_player = self.player2 if current_player == self.player1 else self.player1
@@ -177,12 +180,12 @@ class Match:
                         return True
         # check for draw due to full grid
         if self.grid.get_nonempty_columns() == []:
-            #print("The game is a draw!")
+            print("The game is a draw!")
             self.IsOver = True
-            return True
+            return False
         return False 
 
-with open("agent_v3.3.pkl", "rb") as file:
+with open("agent_v4.2.pkl", "rb") as file:
     loaded_agent = pickle.load(file)
 
 if __name__ == "__main__":

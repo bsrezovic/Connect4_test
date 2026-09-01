@@ -48,15 +48,15 @@ class Grid:
                 state_vector.append(cell)
         return tuple(state_vector)  # return as a tuple for hashing
 
-c4grid = Grid(7, 6)
+#c4grid = Grid(7, 6)
 
-c4grid.insert_coin(3, "B")
+#c4grid.insert_coin(3, "B")
 
-print(c4grid.display())
+#print(c4grid.display())
 
-c4grid.get_grid()
+#c4grid.get_grid()
 
-print(c4grid.get_nonempty_columns()) 
+#print(c4grid.get_nonempty_columns()) 
 
-c4grid.get_value(0, 0)
+#c4grid.get_value(0, 0)
 
