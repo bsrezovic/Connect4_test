@@ -43,6 +43,11 @@ class BotArena:
     def update_bracket(self, instances):
         # sort the instances by winrate
         instances.sort(key=lambda x: x.winrate, reverse=True)
+        # print the winrates of the instances
+        print(f"Winrates after era {self.era}:")
+        for i, instance in enumerate(instances):
+            print(f"Bot {i+1}: {instance.randID}, Winrate: {instance.winrate:.2f}, Games Played: {instance.games_played}, Games Won: {instance.games_won}")
+
         # keep the top 50% of the instances
         top_4 = instances[:4]
         new_instances = top_4.copy() 
@@ -198,7 +203,7 @@ class Duel:
                 self.steps_done_agent1 += 1
 
             if self.episodes == self.match_limit:
-                print(f"After 101 episodes, {self.agent1_player} has won {self.agent1.games_won} games and {self.agent2_player} has won {self.agent2.games_won} games")
+                #print(f"After 101 episodes, {self.agent1_player} has won {self.agent1.games_won} games and {self.agent2_player} has won {self.agent2.games_won} games")
                 self.done = True
 
 #agent1 = DeepAgentConvolved()
@@ -217,12 +222,14 @@ for era in range(arena.nume_eras):
     arena.round_robin(bots)
     bots = arena.update_bracket(bots)
 
-    if era <= arena.nume_eras * 0.8: 
-        for bot in bots:
-            if bot.epsilon == bot.epsilon_min:
-                bot.epsilon = 0.2
-                print(f"Resetting epsilon for bot {bot.randID} to 0.2 in era {era+1} to encourage exploration")
     
+    for bot in bots:
+        if era <= arena.nume_eras * 0.8 and bot.epsilon > bot.epsilon_min: 
+
+            
+            bot.epsilon = 0.2
+            print(f"Resetting epsilon for bot {bot.randID} to 0.2 in era {era+1} to encourage exploration")
+        bot.reset_stats()  # Reset stats for the next era
 
 
 #save the agents to disk

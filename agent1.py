@@ -132,6 +132,16 @@ class DeepAgent:
         self.games_won_second = 0
         self.winrate_first = 0
         self.winrate_second = 0
+    def reset_stats(self):
+        self.games_played = 0 
+        self.games_won = 0
+        self.total_reward = 0
+        self.games_went_first = 0
+        self.games_went_second = 0
+        self.games_won_first = 0
+        self.games_won_second = 0
+        self.winrate_first = 0
+        self.winrate_second = 0
     # this just plays moves based on the net, good code i hope for future playing vs human use
     def choose_action(self, state, availible_actions, mode = "learning"): 
         if random.random() < self.epsilon and mode =="learning":
