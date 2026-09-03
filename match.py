@@ -185,10 +185,13 @@ class Match:
             return False
         return False 
 
-with open("agent_v4.2.pkl", "rb") as file:
-    loaded_agent = pickle.load(file)
+
+
+
 
 if __name__ == "__main__":
+    with open("agent_v4.2.pkl", "rb") as file:
+        loaded_agent = pickle.load(file)
     game = Match("Player 1", "Player 2")
     viewer = MatchViewer(game)
 

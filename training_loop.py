@@ -114,7 +114,7 @@ while not done:
         steps_done += 1
 
     
-    if episodes == 10000:
+    if episodes == 50:
         break
 
 agent.winrate

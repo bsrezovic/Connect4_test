@@ -99,7 +99,7 @@ class DeepAgent:
     def __init__(self, learning_rate = 0.001, gamma=0.99,
                  epsilon=1.0, epsilon_min = 0.01, epsilon_decay = 0.995,
                  batch_size = 64, target_update_freq = 1000, memory_size = 10000):
-        self.randID = id = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        self.randID = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
         # hyperparamters
         self.learning_rate = learning_rate
         self.gamma = gamma
