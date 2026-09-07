@@ -12,15 +12,45 @@ from collections import deque
 class dummy_agent: # just picks a column and stick with it until it cant anymore, then picks a new column
     def __init__(self):
         self.current_column = None
-        self.games_played = 0
-        self.games_won = 0
-        self.winrate = 0
+        self.randID = "dummy_bot"
+
         self.type = "dummy"
+        self.total_reward = 0
+        self.winrate = 0
+        self.games_played_total = 0  # doesent reset. this is for agent maturity 
+        self.games_played = 0 
+        self.games_won = 0
+        self.total_reward = 0
+        self.games_went_first = 0
+        self.games_went_second = 0
+        self.games_won_first = 0
+        self.games_won_second = 0
+        self.winrate_first = 0
+        self.winrate_second = 0
+
+        # currently unused stuff:
+        self.learning_rate = 0
+        self.gamma = 0
+        self.epsilon = 0
+        self.epsilon_min = 0
+        self.epsilon_decay = 0
+        self.batch_size = 0
+        self.target_update_freq = 0
+        self.memory_size = 0
     def choose_action(self,availible_columns):
         if self.current_column is None or self.current_column not in availible_columns:
             self.current_column = random.choice(availible_columns)
         return self.current_column
-
+    def reset_stats(self):
+        self.games_played = 0 
+        self.games_won = 0
+        self.total_reward = 0
+        self.games_went_first = 0
+        self.games_went_second = 0
+        self.games_won_first = 0
+        self.games_won_second = 0
+        self.winrate_first = 0
+        self.winrate_second = 0
 
 class Agent:
     def __init__(self, alpha=0.1, gamma=0.9, epsilon=0.1):
@@ -123,6 +153,7 @@ class DeepAgent:
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=learning_rate)
         self.memory = deque(maxlen=self.memory_size)
         self.winrate = 0
+        self.games_played_total = 0  # doesent reset. this is for agent maturity 
         self.games_played = 0 
         self.games_won = 0
         self.total_reward = 0
