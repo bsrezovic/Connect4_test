@@ -62,7 +62,14 @@ class BotArena:
             source_agent = top_4[i % 4]
             if isinstance(source_agent, dummy_agent):
                 # if the dummy is winning dont copy it, save the 5th place instead
-                new_instances.append(instances[5])
+                source_agent = instances[5]
+                source_id = source_agent.randID
+                new_id = f"{source_id}_era{self.era}" # keeps a string based rep of the agent's lineage
+                                                    # will be useful for future "crossbreeding"                      
+                print(f"Creating new agent from {source_id} with new ID {new_id}")
+                new_agent = copy.deepcopy(source_agent)
+                new_agent.randID = new_id               
+                new_instances.append(new_agent)
             else:
                 source_id = source_agent.randID
                 new_id = f"{source_id}_era{self.era}" # keeps a string based rep of the agent's lineage
@@ -237,20 +244,24 @@ class Duel:
 #dvoboy.run_duel()
 
 
-arena = BotArena(num_rounds=10, num_eras=1000, match_limit=101)
+arena = BotArena(num_rounds=10, num_eras=100, match_limit=1000)
 
 bots = arena.populate_arena()
 
 for era in range(arena.nume_eras):
-    print(f"Starting era {era+1}")
+    print(f"Starting era decade {era+1}")
     arena.round_robin(bots)
-    bots = arena.update_bracket(bots)
+    if era % arena.num_rounds == 0:
+        # update the bots every 10 rounds
+        bots = arena.update_bracket(bots)
 
-    if era % 100 == 0:
-        for i, bot in enumerate(bots):
-            with open(f'bot_{bot.randID}_saved_era{arena.era}_gp_{bot.games_played_total}.pkl', 'wb') as f:
-                pickle.dump(bot, f)
-    
+    if era % 10 == 0:
+        # the bots are sorted after the update_bracket function, so we can save them in order of performance
+        for i, bot in enumerate(bots[:3]):
+            if bot.type != "dummy":
+                with open(f'bot_{bot.randID}_saved_era{arena.era}_gp_{bot.games_played_total}.pkl', 'wb') as f:
+                    pickle.dump(bot, f)
+        
     for bot in bots:
         if era <= arena.nume_eras * 0.8 and bot.epsilon > bot.epsilon_min: 
 
@@ -263,3 +274,7 @@ for era in range(arena.nume_eras):
 for i, bot in enumerate(bots):
     with open(f'bot_{bot.randID}_era{arena.era}_gp_{bot.games_played_total}.pkl', 'wb') as f:
         pickle.dump(bot, f)
+
+
+for i in range(10):
+    print(i)
