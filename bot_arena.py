@@ -20,7 +20,7 @@ class BotArena:
     def __init__(self, num_rounds=100, num_eras = 10, match_limit=101):
         self.era = 1
         self.num_rounds = num_rounds
-        self.nume_eras = num_eras
+        self.num_eras = num_eras
         self.match_limit = match_limit
     def populate_arena(self):
         # populate initial arena with some bots and agents
@@ -34,8 +34,12 @@ class BotArena:
         for agent1, agent2 in combinations(instances, 2):
             duel = Duel(agent1, agent2, self.match_limit)
             duel.run_duel()
-        
-        
+    def uptick_era(self):
+        self.era += 1
+    def print_stats(self, instances):
+        print(f"Winrates after era {self.era}:")
+        for i, instance in enumerate(instances):
+            print(f"Bot {i+1}: {instance.randID}, Winrate: {instance.winrate:.2f}, Games Played: {instance.games_played}, Games Won: {instance.games_won} Games playerd total: {instance.games_played_total}")
 
     def update_bracket(self, instances):
         # sort the instances by winrate
@@ -243,38 +247,38 @@ class Duel:
 
 #dvoboy.run_duel()
 
+if __name__ == "__main__":
+    arena = BotArena(num_rounds=10, num_eras=100, match_limit=1000)
 
-arena = BotArena(num_rounds=10, num_eras=100, match_limit=1000)
+    bots = arena.populate_arena()
 
-bots = arena.populate_arena()
+    for era in range(arena.num_eras):
+        print(f"Starting era decade {era+1}")
+        arena.round_robin(bots)
+        if era % arena.num_rounds == 0:
+            # update the bots every 10 rounds
+            bots = arena.update_bracket(bots)
 
-for era in range(arena.nume_eras):
-    print(f"Starting era decade {era+1}")
-    arena.round_robin(bots)
-    if era % arena.num_rounds == 0:
-        # update the bots every 10 rounds
-        bots = arena.update_bracket(bots)
-
-    if era % 10 == 0:
-        # the bots are sorted after the update_bracket function, so we can save them in order of performance
-        for i, bot in enumerate(bots[:3]):
-            if bot.type != "dummy":
-                with open(f'bot_{bot.randID}_saved_era{arena.era}_gp_{bot.games_played_total}.pkl', 'wb') as f:
-                    pickle.dump(bot, f)
-        
-    for bot in bots:
-        if era <= arena.nume_eras * 0.8 and bot.epsilon > bot.epsilon_min: 
-
+        if era % 10 == 0:
+            # the bots are sorted after the update_bracket function, so we can save them in order of performance
+            for i, bot in enumerate(bots[:3]):
+                if bot.type != "dummy":
+                    with open(f'bot_{bot.randID}_saved_era{arena.era}_gp_{bot.games_played_total}.pkl', 'wb') as f:
+                        pickle.dump(bot, f)
             
-            bot.epsilon = 0.2
-        bot.reset_stats()  # Reset stats for the next era
+        for bot in bots:
+            if era <= arena.num_eras * 0.8 and bot.epsilon > bot.epsilon_min: 
+
+                
+                bot.epsilon = 0.2
+            bot.reset_stats()  # Reset stats for the next era
 
 
-#save the agents to disk
-for i, bot in enumerate(bots):
-    with open(f'bot_{bot.randID}_era{arena.era}_gp_{bot.games_played_total}.pkl', 'wb') as f:
-        pickle.dump(bot, f)
+    #save the agents to disk
+    for i, bot in enumerate(bots):
+        with open(f'bot_{bot.randID}_era{arena.era}_gp_{bot.games_played_total}.pkl', 'wb') as f:
+            pickle.dump(bot, f)
 
 
-for i in range(10):
-    print(i)
+    for i in range(10):
+        print(i)
