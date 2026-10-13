@@ -125,6 +125,28 @@ class DQN2(nn.Module):
         return self.out(x)
 
 
+class DQN3(DQN2):
+    def __init__(self):
+        super().__init__()  # builds conv1, conv2, conv3, fc1, and out
+        del self.out
+        # Value head: one scalar per board
+        self.value_head = nn.Linear(128, 1)
+        # Advantage head: one scalar per column
+        self.adv_head = nn.Linear(128, 7)
+
+    def forward(self, x):
+
+        x = torch.relu(self.conv1(x))
+        x = torch.relu(self.conv2(x))
+        x = torch.relu(self.conv3(x))
+        x = x.view(x.size(0), -1)
+        x = torch.relu(self.fc1(x))
+
+        v = self.value_head(x)                              # (B, 1)
+        a = self.adv_head(x)                                # (B, 7)
+        return v + (a - a.mean(dim=1, keepdim=True))        # (B, 7)
+
+
 class DeepAgent:
     def __init__(self, learning_rate = 0.001, gamma=0.99,
                  epsilon=1.0, epsilon_min = 0.01, epsilon_decay = 0.995,
@@ -316,6 +338,17 @@ class DeepAgentConvolved(DeepAgent):
         loss.backward()
         self.optimizer.step()
 
+
+class DeepAgentConvolvedDueling(DeepAgentConvolved):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)          # builds policy_net/target_net as DQN2, then we replace them
+        self.policy_net = DQN3()
+        self.target_net = DQN3()
+        self.target_net.load_state_dict(self.policy_net.state_dict())
+        self.target_net.eval()
+        # Rebuild optimizer so it points at the NEW policy_net's parameters
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate)
+        self.type = "DeepAgentConvolvedDueling"
 
 
 

@@ -39,7 +39,7 @@ class BotArena:
     def print_stats(self, instances):
         print(f"Winrates after era {self.era}:")
         for i, instance in enumerate(instances):
-            print(f"Bot {i+1}: {instance.randID}, Winrate: {instance.winrate:.2f}, Games Played: {instance.games_played}, Games Won: {instance.games_won} Games playerd total: {instance.games_played_total}")
+            print(f"Bot {i+1}: {instance.randID}, Winrate: {instance.winrate:.2f}, Games Played: {instance.games_played}, Games Won: {instance.games_won} Games playerd total: {instance.games_played_total} Epsilon: {instance.epsilon} ")
 
     def update_bracket(self, instances):
         # sort the instances by winrate
@@ -193,7 +193,8 @@ class Duel:
                         self.reward = -3
                     else:
                         self.reward = 0
-                    self.agent2.update_memory(self.last_state,self.next_state,self.move,self.done,self.reward,self.player_token)
+                    match_over = self.match.IsOver   
+                    self.agent2.update_memory(self.last_state,self.next_state,self.move,match_over,self.reward,self.player_token)
                     # Optimize model
                     # model is optimized after batch_size batches. but epsilon is updated only episodically
                     self.agent2.optimize()
@@ -224,7 +225,8 @@ class Duel:
                         self.reward = -3
                     else:
                         self.reward = 0
-                    self.agent1.update_memory(self.last_state,self.next_state,self.move,self.done,self.reward,self.player_token)
+                    match_over = self.match.IsOver
+                    self.agent1.update_memory(self.last_state,self.next_state,self.move,match_over,self.reward,self.player_token)
                     # Optimize model
                     # model is optimized after batch_size batches. but epsilon is updated only episodically
                     self.agent1.optimize()
