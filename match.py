@@ -190,7 +190,7 @@ class Match:
 
 
 if __name__ == "__main__":
-    with open("era2_bots/bot_rDbR6j7R_era6_era7_era8_era11_gp_801000.pkl", "rb") as file:
+    with open("bot_zOBIda1I_era2001_gp_2000000.pkl", "rb") as file:
         loaded_agent = pickle.load(file)
     game = Match("Player 1", "Player 2")
     viewer = MatchViewer(game)

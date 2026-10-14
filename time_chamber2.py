@@ -22,7 +22,7 @@ if __name__ == "__main__":
     # run this agianst dummy agent for a while
     loaded_agent  = DeepAgentConvolvedDueling()
     loaded_agent.epsilon_decay = 0.99999 
-    arena = BotArena(num_rounds=10, num_eras=2000, match_limit=1000)
+    arena = BotArena(num_rounds=10, num_eras=1000, match_limit=1000)
     dummy_agent = dummy_agent()
     bots = [loaded_agent, dummy_agent]
 
@@ -41,12 +41,12 @@ if __name__ == "__main__":
                     with open(f'bot_{bot.randID}_saved_era{arena.era}_gp_{bot.games_played_total}.pkl', 'wb') as f:
                         pickle.dump(bot, f)
             
-        for bot in bots:
-            if era <= arena.num_eras * 0.8 and bot.epsilon <= bot.epsilon_min and bot.type != "dummy": 
+        #for bot in bots:
+        #    if era <= arena.num_eras * 0.8 and bot.epsilon <= bot.epsilon_min and bot.type != "dummy": 
 
-                print("Resetting epsilon to 0.2 for next era")
-                bot.epsilon = 0.2
-            bot.reset_stats()  # Reset stats for the next era
+        #        print("Resetting epsilon to 0.2 for next era")
+        #        bot.epsilon = 0.2
+        #    bot.reset_stats()  # Reset stats for the next era
 
 
     #save the agents to disk

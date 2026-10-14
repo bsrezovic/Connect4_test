@@ -96,8 +96,10 @@ class BotArena:
 
 # form a helper class that will run a duel between two agents and return the winner, loser, or draw
 # lets make each duel a best of 101?
+
+
 class Duel:
-    
+
     def __init__(self, agent1, agent2, match_limit=101):
         self.agent1 = agent1
         self.agent2 = agent2
@@ -106,143 +108,200 @@ class Duel:
         self.loser = None
         self.match_limit = match_limit
         self.done = False
-        self.agent1_player = "Player 1" # need to initialize this so my loop works as intended
-        self.agent2_player = "Player 2" # need to initialize this so my loop works as intended
+        self.agent1_player = "Player 1"
+        self.agent2_player = "Player 2"
         self.steps_done_agent1 = 0
         self.steps_done_agent2 = 0
         self.episodes = 0
+
+        # ---- delayed transitions: (state, action, token) ----
+        self.pending_agent1 = None
+        self.pending_agent2 = None
+
+        # ---- per-agent token (1 if that agent is "Player 1", else 2) ----
+        self.agent1_token = 1
+        self.agent2_token = 2
+
+        # which physical player goes 2nd (0 or 1), set on turn 1
+        self.botorder = 0
+
+    # ------------------------------------------------------------------
+    # helpers
+    # ------------------------------------------------------------------
+    def _terminal_reward(self, agent_player):
+        """Reward from the perspective of agent_player at a terminal state."""
+        if self.match.winner == agent_player:
+            return 1
+        elif self.match.winner in ("Player 1", "Player 2"):
+            return -1
+        else:
+            return 0
+
+    def _resolve_pending(self, which, agent, next_state, done):
+        """Finalize agent #which's pending transition using next_state as s'."""
+        if agent.type == "dummy":
+            return
+        attr = "pending_agent1" if which == 1 else "pending_agent2"
+        pending = getattr(self, attr)
+        if pending is None:
+            return
+        state, action, token = pending
+        if done:
+            agent_player = self.agent1_player if which == 1 else self.agent2_player
+            reward = self._terminal_reward(agent_player)
+        else:
+            reward = 0
+        agent.update_memory(state, next_state, action, done, reward, token)
+        agent.optimize()
+        setattr(self, attr, None)
+
+    def _resolve_all_pending_terminal(self):
+        """Game just ended - finalize any outstanding pending transitions."""
+        grid = self.match.grid.get_grid()
+        self._resolve_pending(1, self.agent1, grid, True)
+        self._resolve_pending(2, self.agent2, grid, True)
+
+    # ------------------------------------------------------------------
+    # main loop
+    # ------------------------------------------------------------------
     def run_duel(self):
-        
         while not self.done:
-            
-            # the match over loop should be the same as in the qlearning version
-            #print("Doing a move")
+
+            # ---------- game end: finalize pending + stats ----------
             if self.match.IsOver:
-                
+                self._resolve_all_pending_terminal()
+
                 self.agent1.games_played += 1
                 self.agent2.games_played += 1
                 self.agent1.games_played_total += 1
                 self.agent2.games_played_total += 1
-                # collect some stats
 
                 if self.match.winner == self.agent1_player:
                     self.agent1.games_won += 1
                     self.agent1.winrate = self.agent1.games_won / self.agent1.games_played
-                    if self.botorder == 0:         
+                    if self.botorder == 0:
                         self.agent1.games_won_first += 1
-                        self.agent1.winrate_first = self.agent1.games_won_first / self.agent1.games_went_first
-                        
+                        self.agent1.winrate_first = (self.agent1.games_won_first /
+                                                     self.agent1.games_went_first)
                     else:
-                        self.agent1.games_won_second += 1     
-                        self.agent1.winrate_second = self.agent1.games_won_second / self.agent1.games_went_second 
+                        self.agent1.games_won_second += 1
+                        self.agent1.winrate_second = (self.agent1.games_won_second /
+                                                      self.agent1.games_went_second)
                 elif self.match.winner == self.agent2_player:
                     self.agent2.games_won += 1
                     self.agent2.winrate = self.agent2.games_won / self.agent2.games_played
-                    if self.botorder == 1:         
+                    if self.botorder == 1:
                         self.agent2.games_won_first += 1
-                        self.agent2.winrate_first = self.agent2.games_won_first / self.agent2.games_went_first
+                        self.agent2.winrate_first = (self.agent2.games_won_first /
+                                                     self.agent2.games_went_first)
                     else:
-                        self.agent2.games_won_second += 1       
-                        self.agent2.winrate_second = self.agent2.games_won_second / self.agent2.games_went_second 
-                    
+                        self.agent2.games_won_second += 1
+                        self.agent2.winrate_second = (self.agent2.games_won_second /
+                                                      self.agent2.games_went_second)
 
-                # moved episode counter here so that we play full games n times
-                self.episodes += 1 
-                # start new match
+                self.episodes += 1
                 self.match = Match("Player 1", "Player 2")
-                
-                # Decay epsilon
-                # we start it high ( to encourgae exploration, even as high as 1 to encourage total randomness)
-                # then we decay it to the point the model only uses what it has learned
-                self.agent1.epsilon = max(self.agent1.epsilon_min, self.agent1.epsilon_decay * self.agent1.epsilon)
-                self.agent2.epsilon = max(self.agent2.epsilon_min, self.agent2.epsilon_decay * self.agent2.epsilon)
 
-            if self.match.turn == 1: # if its the first turn we have to dedide is the random bot player 1 or player 2, and then we will have to make the self.agent play the other player
+                self.agent1.epsilon = max(self.agent1.epsilon_min,
+                                          self.agent1.epsilon_decay * self.agent1.epsilon)
+                self.agent2.epsilon = max(self.agent2.epsilon_min,
+                                          self.agent2.epsilon_decay * self.agent2.epsilon)
+
+            # ---------- coin flip on first turn ----------
+            if self.match.turn == 1:
                 if random.random() < 0.5:
                     self.botorder = 0
                     self.agent1_player = "Player 1"
                     self.agent2_player = "Player 2"
                     self.agent1.games_went_first += 1
                     self.agent2.games_went_second += 1
-                    self.player_token = 1
+                    self.agent1_token = 1
+                    self.agent2_token = 2
                 else:
                     self.botorder = 1
                     self.agent1_player = "Player 2"
                     self.agent2_player = "Player 1"
                     self.agent2.games_went_first += 1
                     self.agent1.games_went_second += 1
-                    self.player_token = 2
-            # currently possible moves 0-6
+                    self.agent1_token = 2
+                    self.agent2_token = 1
+
             self.moves = self.match.get_available_columns()
-            
 
-            if self.match.turn % 2 == self.botorder:   # self.agent 2 takes its move
+            # ==========================================================
+            # agent2's turn
+            # ==========================================================
+            if self.match.turn % 2 == self.botorder:
+
+                # Agent2 is about to play, so the opponent (agent1) has
+                # already replied -> the current grid IS s' for agent2's
+                # previous pending transition.
+                self._resolve_pending(2, self.agent2,
+                                      self.match.grid.get_grid(), False)
+
                 if self.agent2.type != "dummy":
-                    self.state = self.match.grid.get_grid() 
-            
-                    self.move = self.agent2.choose_action(self.state,self.moves,self.player_token)
-                    # play the moves that the self.agent decided on 
-                    self.match.play_bot(self.move)
-            
-                    # update self.agent memory
-                    self.next_state = self.match.grid.get_grid()
-                    self.last_state = self.state
-                    if self.match.winner == self.agent2_player:
-                        self.reward = 1
-                    elif self.match.winner == self.agent1_player:
-                        self.reward = -3
-                    else:
-                        self.reward = 0
-                    match_over = self.match.IsOver   
-                    self.agent2.update_memory(self.last_state,self.next_state,self.move,match_over,self.reward,self.player_token)
-                    # Optimize model
-                    # model is optimized after batch_size batches. but epsilon is updated only episodically
-                    self.agent2.optimize()
-                    # Update target network periodically, lets say every 1000 moves played
-                    # this has a consequence of tying update freq to speed of winning/losing, perhaps unintended but ok
-                    if self.steps_done_agent2 % self.agent2.target_update_freq == 0:
-                        self.agent2.target_net.load_state_dict(self.agent2.policy_net.state_dict())
+                    state = self.match.grid.get_grid()
+                    move = self.agent2.choose_action(state, self.moves, self.agent2_token)
+                    self.match.play_bot(move)
 
+                    if self.match.IsOver:
+                        # agent2's own move ended the game -> finalize now
+                        grid = self.match.grid.get_grid()
+                        reward = self._terminal_reward(self.agent2_player)
+                        self.agent2.update_memory(state, grid, move, True,
+                                                  reward, self.agent2_token)
+                        self.agent2.optimize()
+                        # agent1's pending is also terminal now
+                        self._resolve_pending(1, self.agent1, grid, True)
+                    else:
+                        # stash it; we'll resolve it after agent1 replies
+                        self.pending_agent2 = (state, move, self.agent2_token)
+
+                    if self.steps_done_agent2 % self.agent2.target_update_freq == 0:
+                        self.agent2.target_net.load_state_dict(
+                            self.agent2.policy_net.state_dict())
                     self.steps_done_agent2 += 1
                 else:
-                    self.move = self.agent2.choose_action(self.moves)
-                    # play the moves that the self.agent decided on 
-                    self.match.play_bot(self.move)
-            else:
-                if self.agent1.type != "dummy":
-                    self.state = self.match.grid.get_grid() 
-    
-                    self.move = self.agent1.choose_action(self.state,self.moves,self.player_token)
-                    # play the moves that the self.agent decided on 
-                    self.match.play_bot(self.move)
+                    self.match.play_bot(self.agent2.choose_action(self.moves))
+                    if self.match.IsOver:
+                        self._resolve_pending(1, self.agent1,
+                                              self.match.grid.get_grid(), True)
 
-                    # update self.agent memory
-                    self.next_state = self.match.grid.get_grid()
-                    self.last_state = self.state
-                    if self.match.winner == self.agent1_player:
-                        self.reward = 1
-                    elif self.match.winner == self.agent2_player:
-                        self.reward = -3
+            # ==========================================================
+            # agent1's turn
+            # ==========================================================
+            else:
+                # Agent1 is about to play, so agent2 has already replied.
+                self._resolve_pending(1, self.agent1,
+                                      self.match.grid.get_grid(), False)
+
+                if self.agent1.type != "dummy":
+                    state = self.match.grid.get_grid()
+                    move = self.agent1.choose_action(state, self.moves, self.agent1_token)
+                    self.match.play_bot(move)
+
+                    if self.match.IsOver:
+                        grid = self.match.grid.get_grid()
+                        reward = self._terminal_reward(self.agent1_player)
+                        self.agent1.update_memory(state, grid, move, True,
+                                                  reward, self.agent1_token)
+                        self.agent1.optimize()
+                        self._resolve_pending(2, self.agent2, grid, True)
                     else:
-                        self.reward = 0
-                    match_over = self.match.IsOver
-                    self.agent1.update_memory(self.last_state,self.next_state,self.move,match_over,self.reward,self.player_token)
-                    # Optimize model
-                    # model is optimized after batch_size batches. but epsilon is updated only episodically
-                    self.agent1.optimize()
-                    # Update target network periodically, lets say every 1000 moves played
-                    # this has a consequence of tying update freq to speed of winning/losing, perhaps unintended but ok
+                        self.pending_agent1 = (state, move, self.agent1_token)
+
                     if self.steps_done_agent1 % self.agent1.target_update_freq == 0:
-                        self.agent1.target_net.load_state_dict(self.agent1.policy_net.state_dict())
+                        self.agent1.target_net.load_state_dict(
+                            self.agent1.policy_net.state_dict())
                     self.steps_done_agent1 += 1
                 else:
-                    self.move = self.agent1.choose_action(self.moves)
-                    # play the moves that the self.agent decided on 
-                    self.match.play_bot(self.move)
-            if self.episodes == self.match_limit:
-                #print(f"After 101 episodes, {self.agent1_player} has won {self.agent1.games_won} games and {self.agent2_player} has won {self.agent2.games_won} games")
-                self.done = True
+                    self.match.play_bot(self.agent1.choose_action(self.moves))
+                    if self.match.IsOver:
+                        self._resolve_pending(2, self.agent2,
+                                              self.match.grid.get_grid(), True)
 
+            if self.episodes == self.match_limit:
+                self.done = True
 #agent1 = DeepAgentConvolved()
 #agent2 = DeepAgentConvolved()
 #dvoboy = Duel(agent1, agent2)
